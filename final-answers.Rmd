@@ -1,0 +1,355 @@
+---
+title: "Final Prep"
+output: html_notebook
+---
+
+# Instructions
+
+- Relax, you got this.
+- Complete each task in this Markdown notebook.
+- You need not enter anything onto Canvas, because no such thing exists.
+- I have included code blocks as needed.
+  - Replace `## YOUR CODE HERE!` with your code.
+- Some tasks ask you interpretation questions. The goal of these tasks
+  is to evaluate your critical thinking skills as they pertain to
+  data. You should not need any additional code to complete these
+  interpretive tasks.
+- Many tasks build upon previous tasks. If you get completely stuck on
+  a question, tell me. You won't get any credit for the task I help
+  you with, but at least you have a shot at getting credit on the
+  tasks which depend on that task.
+- This final prep was brought to you by:
+    - Metallica's Black Album
+
+
+
+# Setup
+
+Run this code chunk to load libraries and import data.
+
+```{r setup, include=FALSE}
+library(rpart)
+library(rpart.plot)
+library(tidyverse)
+options(scipen = 999)
+appointments <- read_csv("data/appointments.csv")
+penguins <- read_csv("data/penguins.csv")
+```
+
+# Question Set 1: Penguins
+
+These questions will assess your ability to manipulate data, do some basic plotting and linear regression.
+
+## Data
+
+You all remember our cute bird friends, right?
+
+```{r}
+penguins
+```
+
+I normally go to great lengths to give you column data, but I don't feel it is necessary here.
+
+## Task 01: Penguin counter!
+
+- Question: How many penguins were on Torgersen island?
+- Answer: 52
+
+
+```{r}
+## YOUR CODE HERE!
+
+## Two different ways to answer this:
+
+## Use count
+penguins %>% count(island)
+
+## OR use group by:
+penguins %>% group_by(island) %>% summarize(n = n())
+```
+
+## Task 02: Body mass by species
+
+- Question: Which penguin species has the highest average body weight?
+- Answer: Gentoo, of course. The others are just so tiny.
+
+```{r}
+## YOUR CODE HERE!
+
+## For this question, we must use group_by.
+## And the code gets long, so we will wrap it.
+penguins %>%
+  group_by(species) %>%
+  summarize(avg_body_mass = mean(body_mass_g, na.rm = TRUE))
+```
+
+- Please look at what happens if you set na.rm = FALSE.
+- If you have missing values, you have to force R to calculate the average.
+
+
+## Task 03: Boxplot of body mass by species: 
+
+- Question: Use ggplot to create a box plot of body mass by species.
+    - Place `species` on the x axis and `body_mass_g` on the y axis.
+- Answer: 
+    - Your results should be consistent with your results from Task 02. (Hint)
+    - https://www.r-graph-gallery.com/boxplot.html
+    - On the final, I'll ask you to upload a plot.
+    - You might also want to look up violin plots and understand what they do and how they differ from box plots.
+
+```{r}
+## YOUR CODE HERE!
+
+ggplot(penguins, aes(x = species, y = body_mass_g)) +
+  geom_boxplot()
+```
+
+
+## Task 04: Wing length by body mass
+
+Draw a scatter plot using body mass on the x-axis and wing length on the y-axis.
+
+- Question: Do heavier penguins tend to have longer wings?
+- Answer: Yes, of course they do.
+
+```{r}
+## YOUR CODE HERE!
+ggplot(penguins, aes(x = body_mass_g, y = flipper_length_mm)) +
+  geom_point()
+```
+
+## Task 05: How many groups?
+
+- Question: If you look at the scatter plot from task 04, you can see that there is a penguin gap right around 205mm of flipper length. This could be because of some bias in our data or sampling error or it could suggest there is more than one group in our dataset. And if that is the case, then there is probably a factor, a variable, which "explains" or "drives" this grouping/separation. Which of the following features (columns) best explains this gap. In other words, which column does the best job of creating a couple of groups? Your options are:
+    - sex
+    - year
+    - species
+- Answer: species
+
+We might guess (correctly) that penguin males are bigger than female penguins, so maybe this explains our two groups. And we can use ggplot to help us figure it out.
+
+```{r}
+ggplot(penguins, aes(x = body_mass_g, y = flipper_length_mm, color = sex)) +
+  geom_point()
+```
+
+We have both genders in both of our groups. There is clearly a pattern, and males are heavier than females, but it doesn't explain the separation around 205mm of flipper length.
+
+Next we will look at year.
+
+```{r}
+## Notice that I changed year to a character.
+## Try taking that part out and running it.
+## Yes, year is a number, but we want to treat it like a categorical.
+ggplot(penguins, aes(x = body_mass_g, y = flipper_length_mm, color = as.character(year))) +
+  geom_point()
+```
+
+All three years are scattered everywhere. I don't see a strong pattern.
+
+Finally, let's try species.
+
+```{r}
+ggplot(penguins, aes(x = body_mass_g, y = flipper_length_mm, color = species)) +
+  geom_point()
+```
+
+And now we can see it. Nearly all of the Adelie and Chinstrap penguins are below 205mm and most of the Gentoo penguins are above 205. It isn't perfect. There are a few "big" Adelie/Chinstraps and a couple of smaller (maybe juvenile?) Gentoos. But this is a pretty strong separation, so species best "explains" the two groups we can see in the data.
+
+## Task 06: Stratify
+
+Draw a scatter plot using bill_length_mm as the x-axis and bill_depth_mm as the y-axis. Stratify this by species to see if we see similar grouping in bills.
+
+- Question: Do we see two or more fairly distinct groups in this plot as well?
+- Answer: Yes, definitely. This time we can see that bill shape (length x depth) clusters into three pretty distinct groups. In fact, we could use this later to predict which species of bird we are looking at. Oooooh. Forewarning.
+
+The trick here is the introduction of the word stratify. But don't let this trip you up. It is LITERALLY the same thing. We want to look for groups based on a categorical variable. And this time, I'm telling you exactly what to look for.
+
+```{r}
+## YOUR CODE HERE!
+ggplot(penguins, aes(x = bill_length_mm, y = bill_depth_mm, color = species)) +
+  geom_point()
+```
+
+## Task 07: How many gentoos?
+
+- Question: What percentage of birds in our data set are gentoos?
+- Answer: 36%
+
+There are several ways to solve this. Here are a few.
+
+```{r}
+## YOUR CODE HERE!
+
+penguins %>%
+  count(species) %>%
+  mutate(p = n/nrow(penguins))
+
+penguins %>%
+  group_by(species) %>%
+  summarize(
+    n = n(),
+    p = n/nrow(penguins)
+  )
+
+## You could also define a variable, denominator.
+denominator <- nrow(penguins)
+penguins %>%
+  count(species) %>%
+  mutate(p = n/denominator)
+```
+
+And, quite honestly, if all that fails, but you can just get the count of birds by species, there is nothing stopping you from using a calculator to divide 124 by 344. I'm just saying.
+
+## Task 08: Is it a gentoo?
+
+- Question: Create a new column is_gentoo. The values in this column should be 0 if the species is Adlie or Chinstrap and 1 if it is a Gentoo. Confirm that the number of birds identified as TRUE (1) equals the number of Gentoos you found in Task 07.
+    - Hello, mutate.
+- Answer: Yes, confirmed.
+
+```{r}
+## YOUR CODE HERE!
+
+## The real trick here is CREATING a new penguins data set.
+## And there are two ways to write the mutate command. I'll show you both.
+
+penguins <-
+  penguins %>%
+  mutate(is_gentoo = case_when(species=="Gentoo"~1, TRUE~0))
+
+## OR . . . . .
+penguins <-
+  penguins %>%
+  mutate(is_gentoo = if_else(species=="Gentoo",1,0))
+```
+
+- Both use a boolean test. The second way is easier to read but is less flexible.
+- Now we need to test our counts.
+
+```{r}
+penguins %>% count(is_gentoo)
+```
+
+In the previous task, we had 124 Gentoos (36%) so our numbers match. #Winning.
+
+
+## Task 09: Can you predict a gentoo?
+
+- Question: Using the two models below, which is a better predictor of being a Gentoo? 
+    - body mass
+    - flipper length
+- Answer: flipper length
+
+```{r}
+glm_body_mass <- glm(
+  is_gentoo~body_mass_g,
+  family = "binomial",
+  data = penguins
+)
+summary(glm_body_mass)
+
+glm_flipper_length <- glm(
+  is_gentoo~flipper_length_mm,
+  family = "binomial",
+  data = penguins
+)
+summary(glm_flipper_length)
+
+```
+
+So, both are really really good predictors. The null variance for is_gentoo is 446.8. Our first model, glm_body_mass, reduced that to 117.85. But, our second model was even better, reducing deviance down to just 49.4. So, while both worked well, flipper length is a better predictor of a penguin being a Gentoo than body mass.
+
+## Task 10: Accuracy
+
+- Question: Reusing the two models from the previous task, which is a more accurate predictor of being a gentoo and what is that accuracy.
+    - I will give you the confusion matrix here AND on the final exam.
+    - I don't expect you to come up with this on your own.
+- Answer: Flipper length is more accurate and is right 97% of the time.
+
+Using the confusion matrices below, your job is to calculate the accuracy of each model.
+
+### Accuracy: Body Mass
+
+```{r}
+confusion_data <- penguins %>% select(is_gentoo)
+confusion_data$predicted_odds <-
+  predict(glm_body_mass, newdata = penguins %>% select(-is_gentoo)) %>% exp()
+confusion_data <-
+  confusion_data %>%
+  mutate(
+    predicted_gentoo = case_when(predicted_odds > 1~1,TRUE~0),
+    did_not_predict_gentoo = case_when(predicted_odds <= 1~1,TRUE~0),
+  )
+
+confusion_data %>%
+  group_by(is_gentoo) %>%
+  summarize(
+    predicted_gentoo = sum(predicted_gentoo),
+    did_not_predict_gentoo = sum(did_not_predict_gentoo),
+    )
+```
+
+Accuracy: (107+207)/344 = 91.3%
+
+As you can see, just using the body mass of our penguin friends we can identify which bird is a Gentoo 91% of the time, which is frankly outstanding.
+
+### Accuracy: Flipper Length
+
+```{r}
+confusion_data <- penguins %>% select(is_gentoo)
+confusion_data$predicted_odds <-
+  predict(glm_flipper_length, newdata = penguins %>% select(-is_gentoo)) %>% exp()
+confusion_data <-
+  confusion_data %>%
+  mutate(
+    predicted_gentoo = case_when(predicted_odds > 1~1,TRUE~0),
+    did_not_predict_gentoo = case_when(predicted_odds <= 1~1,TRUE~0),
+  )
+
+confusion_data %>%
+  group_by(is_gentoo) %>%
+  summarize(
+    predicted_gentoo = sum(predicted_gentoo),
+    did_not_predict_gentoo = sum(did_not_predict_gentoo),
+    )
+```
+
+Accuracy: (121 + 213)/344
+
+But . . . flipper length is even better. Using JUST the flipper length, our model can guess which penguin is a Gentoo 97% of the time. I hope I don't have to explain that 97 is greater than 91. And this is consistent with our answer from up above. The model with the smaller amount of residual deviance does a better job predicting which bird is a Gentoo.
+
+### Accuracy Explained
+
+- Accuracy is the number of correct guesses divided by total guesses.
+- Generally speaking, having more correct guesses is a good thing.
+
+
+## Task 10: Grow a tree
+
+- Question: Using the CaRT model provided below, if a penguin has a flipper length of 208mm, is it (probably) a gentoo?
+- Answer: YES!!! 
+
+```{r}
+## YOUR CODE HERE!
+tree_flipper <- rpart(is_gentoo~flipper_length_mm, data = penguins, method = "class")
+rpart.plot(tree_flipper)
+```
+
+You read a decision tree by going down each step/node/leaf/whatever. Each step is a boolean test. The first (and only) test in this model is flipper_length_mm < 207. Well, a penguin with a flipper length of 208mm is NOT LESS THAN 207, so we go right. And we can see that 38% of the penguins in our data set have a flipper length greater than or equal to 207 and that 95% of these penguins are Gentoos. So, the model would guess that yes, a penguin with a flipper length of 208 is mostl likely a Gentoo (95 percent of the tim).
+
+## Task 11: Just for fun
+
+- Question: Remember our stratified plot (there's that word again) showing THREE groups could be seen using bill length and bill depth. Well, I'd like to show you how flexible CaRT models (decision trees) are. Below is a model using those two features (colulmns).
+
+```{r}
+species_bill <- rpart(
+  species~bill_length_mm+bill_depth_mm,
+  data = penguins,
+  method = "class"
+)
+rpart.plot(species_bill)
+```
+
+I should really use this in class. Red leaves are predicting the bird is an Adelie. Grey leaves predict Chinstraps and green leaves predict Gentoos. Darker colors mean the model is more sure of it's guess.
+
+This isn't actually on the exam, but I thought it was worth showing you.
